@@ -57,9 +57,9 @@ Some examples:
 - `vilmibm/gh-screensaver` ASCII animations to stare at while builds are running
 - `dlvhdr/gh-dash` A rich TUI dashboard of your work on GitHub
 
-## 0.1. Prerequisite: get gh installed and authenticated
+## Prerequisites
 
-### Installation
+### Get gh installed and authenticated
 
 If you already have `gh` installed and authenticated, feel free to zone out for this part.
 
@@ -71,16 +71,16 @@ brew install gh
 winget install --id GitHub.cli
 ```
 
-If you're on Linux, check out our [linux installation docs](https://github.com/cli/cli/blob/trunk/docs/install_linux.md)
+If you're on Linux, check out our [linux installation docs](https://github.com/cli/cli/blob/trunk/docs/install_linux.md).
 
-### Authentication
+Once installed, authentication `gh`:
 
 ```
 # Start the authentication wizard
 gh auth login
 ```
 
-### Test it out
+and then test it out:
 
 ```
 gh api graphql -fquery='query { viewer { login } }'
@@ -95,11 +95,9 @@ gh api graphql -fquery='query { viewer { login } }'
 #}
 ```
 
-## 0.2. Prerequisite: Installing go
+### Installing go
 
 If you already have `go` installed, feel free to zone out for this part.
-
-### Installing
 
 Head to [the Go downloads page](https://go.dev/dl/). Download and run the appropriate installation media.
 
@@ -126,7 +124,7 @@ go run ~/main.go
 # oh hey
 ```
 
-## 1. Finding extensions and installing extensions
+## Finding extensions and installing extensions
 
 Before we actually make a new extension, let's see what it looks like when an extension has been published.
 
@@ -150,7 +148,9 @@ gh screensaver -sstarfield
 
 By the end of this workshop, you'll know how to publish extensions that are discoverable and installable like this one.
 
-## 2.0. Create a boilerplate extension
+## Set up a new extension
+
+### Create a boilerplate extension
 
 For the purposes of this workshop, we'll be recreating my sample CLI extension, [gh-ask](https://github.com/vilmibm/gh-ask).
 
@@ -202,7 +202,7 @@ For more information on writing extensions:
 https://docs.github.com/github-cli/github-cli/creating-github-cli-extensions
 ```
 
-## 2.1. Create a repository for the extension
+### Create a repository for the extension
 
 `gh` just created a local `git` repository for you. It has no commits and does not yet exist on GitHub. To save on confusion later, we'll go ahead and finalize this repository before we work on it.
 
@@ -250,7 +250,7 @@ Branch 'trunk' set up to track remote branch 'trunk' from 'origin'.
 ✓ Pushed commits to git@github.com:vilmibm/gh-ask.git
 ```
 
-## 2.2. Run the new extension
+### Run the new extension
 
 It doesn't do much yet, but it's already possible to run this new extension.
 
@@ -262,11 +262,13 @@ go run .
 #running as vilmibm
 ```
 
-## 3.0. Writing the extension
+## Writing the extension
 
 We'll be making heavy use of a library called [go-gh](https://github.com/cli/go-gh) to write our extension. The CLI team has extracted a lot of code from `gh` and put it in an external library so extension authors can take advantage of our work. Using `go-gh` also helps make your extension behave consistently with `gh`.
 
-## 3.1. Basic structure
+**!!!** Sometimes after updating imports in your Go code, you'll get an error about needing to run `go mod tidy`. If this happens, run `go mod tidy`.
+
+### Basic structure
 
 1. Open up main.go and delete everything except `package main` at the top.
 2. Add two new functions with the following signatures:
@@ -297,7 +299,7 @@ func cli() error {
 }
 ```
 
-## 3.2. User input: repository and search term
+### User input: repository and search term
 
 `gh-ask` should either determine what repository to query based on the terminal's current directory or respect a `-R` flag (like `gh` does).
 
@@ -368,7 +370,7 @@ going to search for auth in cli/cli
 
 In the first invocation, the result of `gh.CurrentRepository()` is used. In the second, the value of `-R` is respected.
 
-## 3.3.0 Calling a GitHub API
+### Calling a GitHub API
 
 In this step, we'll modify our code to use the GitHub GraphQL API. We'll use a
 combination of `go-gh`'s GraphQL client and a supporting graphql library called
@@ -383,7 +385,7 @@ import (
 )
 ```
 
-## 3.3.1 Adding GraphQL query structs
+### Adding GraphQL query structs
 
 We'll need to add two type declarations to our code. One describes a discussion and the other describes the shape of our overall GraphQL query.
 
@@ -391,9 +393,9 @@ At the top level of your code, add:
 
 ```go
 type discussion struct {
-  Title string
+  Title string `json:"title"`
   URL   string `json:"url"`
-  Body  string
+  Body  string `json:"body"`
 }
 
 type gqlQuery struct {
@@ -408,7 +410,7 @@ type gqlQuery struct {
 }
 ```
 
-## 3.3.2 Running the query
+### Running the query
 
 Now that we have types to support our use of GraphQL, it's time to make an API call and process the result.
 
@@ -459,31 +461,301 @@ func cli() error {
 }
 ```
 
-## 3.4. Output formatting
+### Output formatting
 
+We are querying the API but not yet actually printing anything out for the user. We could just print the results out raw, but what about concerns like:
 
-TODO
+- the width of the user's terminal?
+- processing the output with a command like `cut`?
+- visual pizazz?
 
-## 4.0. Publishing releases
+`gh` frequently prints out a high density of information and relies on width-aware columnar printing that is friendly for both humans and scripts. All of the code that powers this is in `go-gh`, so let's make use of it in our extension.
 
-TODO
+First, add two new imports:
 
-## 5.0. Other features in go-gh
+```go
+import (
+  // other imports
+  "github.com/cli/go-gh/pkg/tableprinter"
+  "github.com/cli/go-gh/pkg/term"
+)
+```
 
-TODO
+and then add new code to the bottom of `cli()`:
 
-## 5.1. Outputting JSON
+```go
+package main
+// import ...
+// func main() ...
+// type discussion...
+// type gqlQuery...
 
-TODO
+func cli() {
+  // input processing...
+  // graphql call...
 
-## 5.2. Processing data with jq
+  isTerminal := term.IsTerminal(os.Stdout) // whether or not output is being piped to another program
+  terminal := term.FromEnv()
+  termWidth, _, _ := terminal.Size()
 
-TODO
+  tp := tableprinter.New(os.Stdout, isTerminal, termWidth)
 
-## 5.3. Opening browsers
+  if isTerminal {
+    fmt.Printf("searching for %s in %s/%s\n", searchTerm, repo.Owner(), repo.Name())
+    fmt.Println()
+  } // else don't bother printing if output is piped
 
-TODO
+  for _, d := range matches {
+    tp.AddField(d.Title)
+    tp.AddField(d.URL)
+    tp.EndRow()
+  }
 
-## 6.0. Wrapping up
+  if err = tp.Render(); err != nil {
+    return fmt.Errorf("couldn't print: %w", err)
+  }
+
+  return nil
+}
+```
+
+Running our code now should return a result like:
+
+```
+go run . -R cli/cli auth
+searching for auth in cli/cli
+
+Failing to authenticate on new wsl setup                                                                           https://github.com/cli/cli/discussions/6884
+gh auth login on linux doesn't let me do git push (it asks for credentials)                                        https://github.com/cli/cli/discussions/6866
+Cannot log in via browser or personal access token                                                                 https://github.com/cli/cli/discussions/6858
+API call failed: USER does not have the correct permissions to execute `ClosePullRequest`                          https://github.com/cli/cli/discussions/6814
+
+# rest truncated
+```
+
+Because we are using `go-gh`'s `tableprinter`, our command will behave appropriately if it gets piped. To see this in action, try:
+
+```
+go run . -R cli/cli auth | cut -f1
+Failing to authenticate on new wsl setup
+gh auth login on linux doesn't let me do git push (it asks for credentials)
+Cannot log in via browser or personal access token
+
+# rest truncated
+```
+
+`cut` automatically splits input lines at a tab character; that's exactly what `tableprinter` uses as a delimiter when it detects it's being piped to another command.
+
+## Publishing releases
+
+`go-gh` can unlock a lot more functionality for our extension, but let's first pause on development to see how publishing an extension works.
+
+Precompiled extensions like the one we're working on are distributed via binary assets on GitHub releases. Because we created our extension with `gh ext create`, our repository already has a GitHub actions workflow installed that looks like this:
+
+```yaml
+name: release
+on:
+  push:
+    tags:
+      - "v*"
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cli/gh-extension-precompile@v1
+```
+
+This workflow file means that when you push to a tag like `v1.0.0`:
+
+- a new release gets added to your repository
+- your Go code is compiled for you
+- each target platform gets a binary uploaded as a release asset
+
+To see an example release, check out my [gh-ask repository](https://github.com/vilmibm/gh-ask/releases/latest).
+
+It is the existence of a release like this -- complete with binary assets -- that `gh` looks for when you run `gh ext install`.
+
+Go ahead and make a release!
+
+```
+git add .
+git commit -m'it does things'
+git push
+git tag v1.0.0
+git push origin v1.0.0
+gh run watch
+```
+
+After the release is done, you can try installing and running your new extension:
+
+```
+gh ext install <your name>/gh-ask
+gh ask -R cli/cli auth
+```
+
+If you followed along, your extension repository is marked private and won't show up in commands like `gh ext search` and `gh ext browse`. Once you've published a release, all that is required to make it show up is to make your extension repository public.
+
+## Other features in go-gh
+
+At this point you have all the tools required to create and release a GitHub extension from end to end in Go.
+
+There is much more to `go-gh`, however, so we'll take a tour through some of those extra features.
+
+### Outputting JSON
+
+We are attentive to whether or not our output is being piped to another program, but we can add an even deeper level of machine-readablity: JSON output.
+
+`go-gh` helps us with two packages:
+
+- `jsonpretty` which formats JSON for pretty printing
+- `jq` which allows users to process the JSON we're outputting using [jq](https://stedolan.github.io/jq/) syntax
+
+To take advantage of these, let's add some imports:
+
+```go
+import (
+  // other imports
+  "bytes"
+  "encoding/json"
+  "github.com/cli/go-gh/pkg/jq"
+  "github.com/cli/go-gh/pkg/jsonpretty"
+)
+```
+
+then add two new flags:
+
+- `--json` for toggling JSON output
+- `--jq` for processing JSON
+
+```go
+package main
+// import ...
+// func main() ...
+// type discussion...
+// type gqlQuery...
+
+func cli() {
+  jsonFlag := flag.Bool("json", false, "Output JSON")
+  jqFlag := flag.String("jq", "", "Process JSON output with a jq expression")
+  // rest of input processing...
+  // graphql call...
+  // output processing...
+}
+```
+
+Flags in hand, let's add some new code right before we call `tableprinter.New()`:
+
+```go
+package main
+// import ...
+// func main() ...
+// type discussion...
+// type gqlQuery...
+
+func cli() {
+  // input processing...
+  // graphql call...
+  // isTerminal check...
+  if *jsonFlag || *jqFlag != "" {
+    output, err := json.Marshal(matches)
+    if err != nil {
+      return fmt.Errorf("could not serialize JSON: %w", err)
+    }
+
+    buff := bytes.NewBuffer(output)
+
+    if *jqFlag != "" {
+      return jq.Evaluate(buff, os.Stdout, *jqFlag)
+    }
+
+    return jsonpretty.Format(os.Stdout, buff, " ", isTerminal)
+  }
+  // rest of output processing...
+}
+```
+
+Now if we run our code with `--json` we'll see:
+
+```
+go run . -R cli/cli --json auth
+[
+ {
+  "Title": "Failing to authenticate on new wsl setup",
+  "url": "https://github.com/cli/cli/discussions/6884",
+  "Body": "I'm in the process of setting up a new machine but in doing so I'm failing to authenticate with `gh auth login`.\r\n\r\nHere's the terminal output:\r\n\r\n```\r\n❯ gh auth login\r\n? What account do you want to log into? GitHub.com\r\n? What is your preferred protocol for Git operations? HTTPS\r\n? Authenticate Git with your GitHub credentials? Yes\r\n? How would you like to authenticate GitHub CLI? Login with a web browser\r\n\r\n! First copy your one-time code: <snip>\r\n- Press Enter to open github.com in your browser...\r\nfailed to authenticate via web browser: Too many requests have been made in the same timeframe. (slow_down)\r\n```\r\n\r\nIn the browser though the auth process goes through correctly, I entered the code, I approved access to my account/orgs, and I was presented with the success screen, only to find my terminal having the error.\r\n\r\nI appear to be on the latest release:\r\n\r\n```\r\n❯ gh version\r\ngh version 2.21.2 (2023-01-03)\r\nhttps://github.com/cli/cli/releases/tag/v2.21.2\r\n```\r\n\r\nAnd the WSL version is:\r\n\r\n```\r\n❯ lsb_release -a\r\nNo LSB modules are available.\r\nDistributor ID: Ubuntu\r\nDescription:    Ubuntu 22.04.1 LTS\r\nRelease:        22.04\r\nCodename:       jammy\r\n```"
+ },
+ ...
+]
+
+go run . -R cli/cli --jq ".[]|.title" auth
+Failing to authenticate on new wsl setup
+gh auth login on linux doesn't let me do git push (it asks for credentials)
+Cannot log in via browser or personal access token
+# ... rest of output truncatedj
+```
+
+### Opening browsers
+
+Sometimes you'll want your extension to open a a user's graphical browser. For example, in `gh` running `gh issue view 123 -w` opens issue 123 in a user's browser.
+
+`go-gh` provides a function to help with this; it automatically figures out what browser to run and opens it for you.
+
+To exercise this behavior in `gh-ask`, we'll add a new flag called `--lucky` which opens the first search result in a browser.
+
+First, add a new import:
+
+```go
+import (
+  // other imports
+  "github.com/cli/go-gh/pkg/browser"
+)
+```
+
+Then a new flag and some code to use it after our graphql call:
+
+```go
+package main
+// import ...
+// func main() ...
+// type discussion...
+// type gqlQuery...
+
+func cli() {
+  luckyFlag := flag.Bool("lucky", false, "Open the first matching result in a web browser")
+  // other flags
+  // graphql call
+  if *luckyFlag {
+    b := browser.New("", os.Stdout, os.Stderr)
+    return b.Browse(matches[0].URL)
+  }
+  // rest of cli()
+}
+```
+
+Now, running `go run . -R cli/cli --lucky auth` should open https://github.com/cli/cli/discussions/6884 in your browser.
+
+## Next steps
+
+### Interpreted extensions
+
+You don't have to precompile extensions; any executable file appropriately named in a repo can be installed as an extension. To learn more, check out the [official GitHub docs](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions#creating-an-interpreted-extension-with-gh-extension-create).
+
+### Other precompiled languages
+
+To work with a precompiled, non-Go language like C++ or Rust, we recommend adding a build script to your repo that can be called from the `gh-extension-precompile` action. To learn more, check out [these docs](https://github.com/cli/gh-extension-precompile#extensions-written-in-other-compiled-languages).
+
+### Advanced Go CLIs
+
+If you want to build a complex extension with multiple subcommands, check out [cobra](https://cobra.dev/). We use it in `gh`.
+
+### Working with the CLI team
+
+It is our hope that hubbers write more GitHub CLI extensions, especially to prototype new CLI features. If you'd like to work with us, check out our [Working With Us doc](https://github.com/cli/cli/blob/trunk/docs/working-with-us.md).
+
+### 7. Wrapping up
 
 TODO
