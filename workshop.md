@@ -85,14 +85,13 @@ and then test it out:
 ```
 gh api graphql -fquery='query { viewer { login } }'
 
-# Should return something like:
-#{
-#  "data": {
-#    "viewer": {
-#      "login": "vilmibm"
-#    }
-#  }
-#}
+{
+  "data": {
+    "viewer": {
+      "login": "vilmibm"
+    }
+  }
+}
 ```
 
 ### Installing go
@@ -121,7 +120,7 @@ Try running the file:
 
 ```
 go run ~/main.go
-# oh hey
+oh hey
 ```
 
 ## Finding extensions and installing extensions
@@ -258,8 +257,8 @@ The output should look something like:
 
 ```
 go run .
-#hi world, this is the gh-ask extension!
-#running as vilmibm
+hi world, this is the gh-ask extension!
+running as vilmibm
 ```
 
 ## Writing the extension
