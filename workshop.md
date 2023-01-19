@@ -154,15 +154,152 @@ By the end of this workshop, you'll know how to publish extensions that are disc
 
 ## 2.0. Create a boilerplate extension
 
+For the purposes of this workshop, we'll be recreating my sample CLI extension, [gh-ask](https://github.com/vilmibm/gh-ask).
+
+This extension searches a repository's Discussions forum for threads relating to a search term.
+
+In the end, it'll work like this:
+
+```
+gh ask -R cli/cli auth
+Searching discussions in 'cli/cli' for 'auth'
+
+gh auth login on linux doesn't let me do git push (i...  https://github.com/cli/cli/discussions/6866
+Cannot log in via browser or personal access token       https://github.com/cli/cli/discussions/6858
+API call failed: USER does not have the correct perm...  https://github.com/cli/cli/discussions/6814
+```
+
+In case you've installed my extension already, please run `gh ext remove ask` to avoid confusion.
+
+First, run `gh`'s wizard for creating a new Go extension:
+
 ```
 # In a directory where you want some source code to live:
 gh ext create
 ```
 
-TODO
+1. The name of your extension is whatever a user would type to run it as a `gh` command. For this workshop, use the name `ask`.
+2. Select **Go** as the answer to _What kind of extension?_
+
+You should see a result like:
+
+```
+$ gh ext create
+? Extension name: ask
+? What kind of extension? Go
+✓ Created directory gh-ask
+✓ Initialized git repository
+✓ Set up extension scaffolding
+✓ Downloaded Go dependencies
+✓ Built gh-ask binary
+
+gh-ask is ready for development!
+
+Next Steps
+- run 'cd gh-ask; gh extension install .; gh ask' to see your new extension in action
+- use 'go build && gh ask' to see changes in your code as you develop
+- commit and use 'gh repo create' to share your extension with others
+
+For more information on writing extensions:
+https://docs.github.com/github-cli/github-cli/creating-github-cli-extensions
+```
 
 ## 2.1. Create a repository for the extension
 
+`gh` just created a local `git` repository for you. It has no commits and does not yet exist on GitHub. To save on confusion later, we'll go ahead and finalize this repository before we work on it.
+
+```
+cd gh-ask
+git add .
+git commit -m'initial commit'
+gh repo create
+```
+
+Running `gh repo create` starts an interactive wizard; use the following answers:
+
+- `? What would you like to do?` Push an existing local repository to GitHub
+- `? Path to local repository` .
+- `? Repository name` gh-ask
+- `? Repository owner` <your name>
+- `? Description` gh-ask
+- `? Visibility` Private
+- `? Add a remote?` Yes
+- `? What should the new remote be called?` origin
+
+Your output should look something like:
+
+```
+? What would you like to do? Push an existing local repository to GitHub
+? Path to local repository .
+? Repository name gh-ask
+? Repository owner vilmibm
+? Description gh-ask
+? Visibility Private
+✓ Created repository vilmibm/gh-ask on GitHub
+? Add a remote? Yes
+? What should the new remote be called? origin
+✓ Added remote git@github.com:vilmibm/gh-ask.git
+? Would you like to push commits from the current branch to "origin"? Yes
+Enumerating objects: 9, done.
+Counting objects: 100% (9/9), done.
+Delta compression using up to 24 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (9/9), 3.42 KiB | 3.42 MiB/s, done.
+Total 9 (delta 0), reused 0 (delta 0), pack-reused 0
+To github.com:vilmibm/gh-ask.git
+ * [new branch]      HEAD -> trunk
+Branch 'trunk' set up to track remote branch 'trunk' from 'origin'.
+✓ Pushed commits to git@github.com:vilmibm/gh-ask.git
+```
+
+## 2.2. Run the new extension
+
+It doesn't do much yet, but it's already possible to run this new extension.
+
+The output should look something like:
+
+```
+go run .
+#hi world, this is the gh-ask extension!
+#running as vilmibm
+```
+
+## 3.0. Writing the extension
+
 TODO
 
-##
+## 3.1. Basic structure
+
+TODO
+
+## 3.2. Supporting flags
+
+TODO
+
+## 3.3. Supporting arguments
+
+TODO
+
+## 3.4. API calls
+
+TODO
+
+## 3.5. Output formatting
+
+TODO
+
+## 3.6. Supporting JSON
+
+TODO
+
+## 3.7. Opening browsers
+
+TODO
+
+## 4.0. Publishing releases
+
+TODO
+
+## 5.0. Wrapping up
+
+TODO
