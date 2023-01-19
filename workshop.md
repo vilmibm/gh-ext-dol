@@ -1,7 +1,5 @@
 # Writing your own GitHub CLI Extensions
 
-_with @vilmibm from the CLI team_
-
 ## me
 
 ```
@@ -24,9 +22,9 @@ I love the terminal.
 
 The GitHub CLI, `gh`, brings GitHub into your terminal.
 
-Marketing website:   https://cli.github.com
-Public Repository:   **cli/cli**
-Internal Repository: **github/cli**
+- Marketing website:   https://cli.github.com
+- Public Repository:   https://github.com/cli/cli
+- Internal Repository: https://github.com/github/cli
 
 It's an open source, flexible, resource light, and extensible way to interact with the GitHub.
 
@@ -41,7 +39,7 @@ It's an open source, flexible, resource light, and extensible way to interact wi
 
 ```
 # List all the open issues in the cli/cli repository
-gh -Rcli/cli issue list
+gh -R cli/cli issue list
 ```
 
 ## CLI Extensions
