@@ -269,13 +269,7 @@ We'll be making heavy use of a library called [go-gh](https://github.com/cli/go-
 
 ### Basic structure
 
-1. Open up main.go and delete everything except `package main` at the top.
-2. Add two new functions with the following signatures:
-  - `cli() error`, which for now just returns `nil`
-  - `main()`, which calls `cli()` and handles any error
-3. Add imports as necessary (if your editor doesn't do it automatically)
-
-Your code should look like:
+Open up main.go and delete everything except `package main` at the top. Then, fill in some new code:
 
 ```go
 package main
@@ -574,6 +568,8 @@ This workflow file means that when you push to a tag like `v1.0.0`:
 - your Go code is compiled for you
 - each target platform gets a binary uploaded as a release asset
 
+These steps are performed by the GitHub Action [gh-extension-precompile](https://github.com/cli/gh-extension-precompile).
+
 To see an example release, check out my [gh-ask repository](https://github.com/vilmibm/gh-ask/releases/latest).
 
 It is the existence of a release like this -- complete with binary assets -- that `gh` looks for when you run `gh ext install`.
@@ -755,6 +751,6 @@ If you want to build a complex extension with multiple subcommands, check out [c
 
 It is our hope that hubbers write more GitHub CLI extensions, especially to prototype new CLI features. If you'd like to work with us, check out our [Working With Us doc](https://github.com/cli/cli/blob/trunk/docs/working-with-us.md).
 
-### 7. Wrapping up
+##  Wrapping up
 
-TODO
+Feel free to reach out to me on Slack or ask in the `#cli` channel if you have questions about `gh` or extensions!
