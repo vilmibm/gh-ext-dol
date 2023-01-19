@@ -5,7 +5,7 @@ _with @vilmibm from the CLI team_
 ## me
 
 ```
- _          _   _        
+ _          _   _
 | |        | | | |      |
 | |     _  | | | |  __  |
 |/ \   |/  |/  |/  /  \_|
@@ -14,13 +14,13 @@ _with @vilmibm from the CLI team_
 
 ```
 
-I'm [@vilmibm](https://github.com/vilmibm), a senior engineer at GitHub. 
+I'm [@vilmibm](https://github.com/vilmibm), a senior engineer at GitHub.
 
-I've been here since 2018 and was a founding member of the CLI team. 
+I've been here since 2018 and was a founding member of the CLI team.
 
 I love the terminal.
 
-## The GitHub CLI 
+## The GitHub CLI
 
 The GitHub CLI, `gh`, brings GitHub into your terminal.
 
@@ -266,33 +266,203 @@ go run .
 
 ## 3.0. Writing the extension
 
-TODO
+We'll be making heavy use of a library called [go-gh](https://github.com/cli/go-gh) to write our extension. The CLI team has extracted a lot of code from `gh` and put it in an external library so extension authors can take advantage of our work. Using `go-gh` also helps make your extension behave consistently with `gh`.
 
 ## 3.1. Basic structure
 
-TODO
+1. Open up main.go and delete everything except `package main` at the top.
+2. Add two new functions with the following signatures:
+  - `cli() error`, which for now just returns `nil`
+  - `main()`, which calls `cli()` and handles any error
+3. Add imports as necessary (if your editor doesn't do it automatically)
 
-## 3.2. Supporting flags
+Your code should look like:
 
-TODO
+```go
+package main
 
-## 3.3. Supporting arguments
+import (
+  "fmt"
+  "os"
+)
 
-TODO
+func main() {
+  if err := cli(); err != nil {
+    fmt.Fprintf(os.Stderr, "gh-ask failed: %s\n", err.Error())
+    os.Exit(1)
+  }
+}
 
-## 3.4. API calls
+func cli() error {
+  // The meat of our extension will go here
+  return nil
+}
+```
 
-TODO
+## 3.2. User input: repository and search term
 
-## 3.5. Output formatting
+`gh-ask` should either determine what repository to query based on the terminal's current directory or respect a `-R` flag (like `gh` does).
 
-TODO
+`go-gh` helps us do this.
 
-## 3.6. Supporting JSON
+- `gh.CurrentRepository()` can tell us what GitHub repository is represented by the current directory
+- `repository.Parse(nameWithOwner)` can parse a user-provided repository name
 
-TODO
+We'll start by adding some imports to the top of our file:
 
-## 3.7. Opening browsers
+```go
+package main
+
+import (
+  "errors"
+  "flag"
+  "fmt"
+  "os"
+  "strings"
+
+  "github.com/cli/go-gh"
+  "github.com/cli/go-gh/pkg/repository"
+)
+```
+
+and then support a `-R` flag and positional argument in `cli()`:
+
+```go
+package main
+// import ...
+// func main() ...
+func cli() error {
+  repoOverride := flag.String("R", "", "Repository to query. Current directory used by default.")
+  flag.Parse()
+
+  if len(flag.Args()) < 1 {
+    return errors.New("search term required")
+  }
+  searchTerm := strings.Join(flag.Args(), " ")
+
+  var repo repository.Repository
+  var err error
+
+  if *repoOverride == "" {
+    repo, err = gh.CurrentRepository()
+  } else {
+    repo, err = repository.Parse(*repoOverride)
+  }
+  if err != nil {
+    return fmt.Errorf("could not determine repository to query: %w", err)
+  }
+
+  fmt.Printf("going to search for %s in %s/%s\n", searchTerm, repo.Owner(), repo.Name())
+
+  return nil
+}
+```
+
+Running your extension should look something like:
+
+```
+go run . auth
+going to search for auth in vilmibm/gh-ask
+
+go run . -R cli/cli auth
+going to search for auth in cli/cli
+```
+
+In the first invocation, the result of `gh.CurrentRepository()` is used. In the second, the value of `-R` is respected.
+
+## 3.3.0 Calling a GitHub API
+
+In this step, we'll modify our code to use the GitHub GraphQL API. We'll use a
+combination of `go-gh`'s GraphQL client and a supporting graphql library called
+`shurcool/graphql`.
+
+First, add a new import:
+
+```go
+import (
+  // other imports
+  graphql "github.com/cli/shurcooL-graphql"
+)
+```
+
+## 3.3.1 Adding GraphQL query structs
+
+We'll need to add two type declarations to our code. One describes a discussion and the other describes the shape of our overall GraphQL query.
+
+At the top level of your code, add:
+
+```go
+type discussion struct {
+  Title string
+  URL   string `json:"url"`
+  Body  string
+}
+
+type gqlQuery struct {
+  Repository struct {
+    HasDiscussionsEnabled bool
+    Discussions struct {
+      Edges []struct {
+        Node discussion
+      }
+    } `graphql:"discussions(first: 100)"`
+  } `graphql:"repository(owner: $owner, name: $name)"`
+}
+```
+
+## 3.3.2 Running the query
+
+Now that we have types to support our use of GraphQL, it's time to make an API call and process the result.
+
+```go
+package main
+// import ...
+// func main() ...
+// type discussion...
+// type gqlQuery...
+
+func cli() error {
+  // input processing...
+  client, err := gh.GQLClient(nil)
+  if err != nil {
+    return fmt.Errorf("could not make graphql client: %w", err)
+  }
+
+  variables := map[string]interface{}{
+    "owner": graphql.String(repo.Owner()),
+    "name": graphql.String(repo.Name()),
+  }
+
+  var query gqlQuery
+
+  if err = client.Query("DiscussionSearch", &query, variables); err != nil {
+    return fmt.Errorf("API call failed: %w", err)
+  }
+
+  if !query.Repository.HasDiscussionsEnabled {
+    return fmt.Errorf("%s/%s has disabled discussions", repo.Owner(), repo.Name())
+  }
+
+  matches := []discussion{}
+
+  for _, edge := range query.Repository.Discussions.Edges {
+    searchText := edge.Node.Body + edge.Node.Title
+    if strings.Contains(searchText, searchTerm) {
+      matches = append(matches, edge.Node)
+    }
+  }
+
+  if len(matches) == 0 {
+    fmt.Fprintln(os.Stderr, "no matching discussions found :(")
+    return nil
+  }
+
+  return nil
+}
+```
+
+## 3.4. Output formatting
+
 
 TODO
 
@@ -300,6 +470,22 @@ TODO
 
 TODO
 
-## 5.0. Wrapping up
+## 5.0. Other features in go-gh
+
+TODO
+
+## 5.1. Outputting JSON
+
+TODO
+
+## 5.2. Processing data with jq
+
+TODO
+
+## 5.3. Opening browsers
+
+TODO
+
+## 6.0. Wrapping up
 
 TODO
