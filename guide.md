@@ -42,6 +42,20 @@ It's an open source, flexible, resource light, and extensible way to interact wi
 gh --repo cli/cli issue list
 ```
 
+## The GitHub CLI
+
+For many GitHub users, `gh` is _the_ point of entry for our company's products. We've heard directly from users that:
+
+- in low-bandwidth areas, `gh` means that GitHub resources can load for them
+- in areas with unreliable internet, `gh` helps maintains a consistent session
+- for users who rely on screen readers, `gh` is much easier to navigate than github.com
+
+For these reasons, I have an ulterior motive in doing this presentation:
+
+**Convincing hubbers to ship features as GitHub CLI extensions**
+
+`gh` is not just a toy for power users or an API wrapper; it's a way to reach huge demographics of developers with software development tooling that can make their work go more smoothly, both supporting GitHub's mission and creating superfans.
+
 ## CLI Extensions
 
 `gh` users can install third party commands published as `git` repositories.
