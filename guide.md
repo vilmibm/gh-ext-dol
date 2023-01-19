@@ -39,7 +39,7 @@ It's an open source, flexible, resource light, and extensible way to interact wi
 
 ```
 # List all the open issues in the cli/cli repository
-gh -R cli/cli issue list
+gh --repo cli/cli issue list
 ```
 
 ## CLI Extensions
@@ -145,7 +145,7 @@ gh ext list
 gh screensaver -sstarfield
 ```
 
-By the end of this workshop, you'll know how to publish extensions that are discoverable and installable like this one.
+By the end of this guide, you'll know how to publish extensions that are discoverable and installable like this one.
 
 ## Set up a new extension
 
@@ -158,7 +158,7 @@ This extension searches a repository's Discussions forum for threads relating to
 In the end, it'll work like this:
 
 ```
-gh ask -R cli/cli auth
+gh ask --repo cli/cli auth
 Searching discussions in 'cli/cli' for 'auth'
 
 gh auth login on linux doesn't let me do git push (i...  https://github.com/cli/cli/discussions/6866
@@ -294,7 +294,7 @@ func cli() error {
 
 ### User input: repository and search term
 
-`gh-ask` should either determine what repository to query based on the terminal's current directory or respect a `-R` flag (like `gh` does).
+`gh-ask` should either determine what repository to query based on the terminal's current directory or respect a `--repo` flag (like `gh` does).
 
 `go-gh` helps us do this.
 
@@ -318,14 +318,14 @@ import (
 )
 ```
 
-and then support a `-R` flag and positional argument in `cli()`:
+and then support a `--repo` flag and positional argument in `cli()`:
 
 ```go
 package main
 // import ...
 // func main() ...
 func cli() error {
-  repoOverride := flag.String("R", "", "Repository to query. Current directory used by default.")
+  repoOverride := flag.String("repo", "", "Repository to query. Current directory used by default.")
   flag.Parse()
 
   if len(flag.Args()) < 1 {
@@ -357,11 +357,11 @@ Running your extension should look something like:
 go run . auth
 going to search for auth in vilmibm/gh-ask
 
-go run . -R cli/cli auth
+go run . --repo cli/cli auth
 going to search for auth in cli/cli
 ```
 
-In the first invocation, the result of `gh.CurrentRepository()` is used. In the second, the value of `-R` is respected.
+In the first invocation, the result of `gh.CurrentRepository()` is used. In the second, the value of `--repo` is respected.
 
 ### Calling a GitHub API
 
@@ -515,7 +515,7 @@ func cli() {
 Running our code now should return a result like:
 
 ```
-go run . -R cli/cli auth
+go run . --repo cli/cli auth
 searching for auth in cli/cli
 
 Failing to authenticate on new wsl setup                                                                           https://github.com/cli/cli/discussions/6884
@@ -529,7 +529,7 @@ API call failed: USER does not have the correct permissions to execute `ClosePul
 Because we are using `go-gh`'s `tableprinter`, our command will behave appropriately if it gets piped. To see this in action, try:
 
 ```
-go run . -R cli/cli auth | cut -f1
+go run . --repo cli/cli auth | cut -f1
 Failing to authenticate on new wsl setup
 gh auth login on linux doesn't let me do git push (it asks for credentials)
 Cannot log in via browser or personal access token
@@ -589,7 +589,7 @@ After the release is done, you can try installing and running your new extension
 
 ```
 gh ext install <your name>/gh-ask
-gh ask -R cli/cli auth
+gh ask --repo cli/cli auth
 ```
 
 If you followed along, your extension repository is marked private and won't show up in commands like `gh ext search` and `gh ext browse`. Once you've published a release, all that is required to make it show up is to make your extension repository public.
@@ -676,7 +676,7 @@ func cli() {
 Now if we run our code with `--json` we'll see:
 
 ```
-go run . -R cli/cli --json auth
+go run . --repo cli/cli --json auth
 [
  {
   "Title": "Failing to authenticate on new wsl setup",
@@ -686,7 +686,7 @@ go run . -R cli/cli --json auth
  ...
 ]
 
-go run . -R cli/cli --jq ".[]|.title" auth
+go run . --repo cli/cli --jq ".[]|.title" auth
 Failing to authenticate on new wsl setup
 gh auth login on linux doesn't let me do git push (it asks for credentials)
 Cannot log in via browser or personal access token
@@ -731,7 +731,34 @@ func cli() {
 }
 ```
 
-Now, running `go run . -R cli/cli --lucky auth` should open https://github.com/cli/cli/discussions/6884 in your browser.
+Now, running `go run . --repo cli/cli --lucky auth` should open https://github.com/cli/cli/discussions/6884 in your browser.
+
+### Other features of go-gh
+
+[Reference docs](https://pkg.go.dev/github.com/cli/go-gh#section-directories)
+
+- Authentication parsing
+  - As long as `gh` is logged in, your extension can take advantage of that auth
+- REST API client
+  ```go
+  client, err := gh.RESTClient(&opts)
+  if err != nil {
+  	log.Fatal(err)
+  }
+  
+  response := []struct{ Name string }{}
+  if err = client.Get("repos/cli/cli/tags", &response); err != nil {
+  
+  fmt.Println(response)
+  ```
+- Markdown rendering
+  - `fmt.Println(markdown.Render(pr.Body))`
+- Configuration reading/writing
+  - this can be used to read `gh`'s config and set values custom to your extension 
+- Output templates
+  - these can be exposed to users, allowing them to customize how your extension prints
+- Text helpers
+  - Pluralization, fuzzy time duration, rune width measurement
 
 ## Next steps
 
